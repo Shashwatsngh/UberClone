@@ -113,8 +113,115 @@ curl -X POST \
 }
 ```
 
+## POST /users/login
+
+Authenticate an existing user and receive a JWT token for subsequent authenticated requests.
+
+### Description
+
+- Logs a user in using email and password.
+- Returns a JWT token on success which can be used for authenticated routes.
+- Requires JSON payload (Content-Type: application/json).
+- Validation: `email` must be a valid email, `password` must be provided.
+
+### Request Body
+
+Provide a JSON object with the following shape:
+
+```
+{
+  "email": "valid email (required)",
+  "password": "string (required)"
+}
+```
+
+Validation rules (from the route validators):
+
+- `email`: required, must be a valid email
+- `password`: required, must not be empty
+
+Example:
+
+```
+POST /users/login
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "password": "supersecret"
+}
+```
+
+### Example cURL
+
+```
+curl -X POST \
+  http://localhost:4000/users/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice@example.com",
+    "password": "supersecret"
+  }'
+```
+
+### Responses
+
+- 200 OK
+  - On success, returns a message, the user document (password omitted by default), and a JWT token.
+  - Example:
+
+```
+{
+  "message": "Login successful",
+  "user": {
+    "_id": "<mongo-id>",
+    "fullname": { "firstname": "Alice", "lastname": "Smith" },
+    "email": "alice@example.com",
+    // other user fields (password is not returned by default)
+  },
+  "token": "<jwt-token>"
+}
+```
+
+- 400 Bad Request
+  - When request validation fails (from express-validator) or required fields are missing.
+  - Example:
+
+```
+{
+  "errors": [
+    {
+      "msg": "Invalid email address",
+      "param": "email",
+      "location": "body"
+    }
+  ]
+}
+```
+
+- 401 Unauthorized
+  - When credentials are invalid (wrong email or password).
+  - Example:
+
+```
+{
+  "message": "Invalid email or password"
+}
+```
+
+- 500 Internal Server Error
+  - For unexpected server errors (e.g., database errors, missing `JWT_SECRET`).
+  - Example:
+
+```
+{
+  "error": "Failed to login user"
+}
+```
+
 ### Notes
 
 - Ensure the server is running and the base URL is correct (e.g., `http://localhost:4000`).
 - `email` field is unique at the database level; duplicate emails may result in a server error unless handled by custom logic.
 - Passwords are hashed before being stored.
+
