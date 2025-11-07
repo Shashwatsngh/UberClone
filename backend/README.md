@@ -225,3 +225,140 @@ curl -X POST \
 - `email` field is unique at the database level; duplicate emails may result in a server error unless handled by custom logic.
 - Passwords are hashed before being stored.
 
+## GET /users/profile
+
+Fetch the authenticated user's profile.
+
+### Description
+
+- Protected route. Requires a valid JWT.
+- Token can be provided via Authorization header or HttpOnly cookie.
+- Returns the user document associated with the token.
+
+### Headers
+
+- Authorization: Bearer <jwt-token> (if using header-based auth), or
+- Cookie: token=<jwt-token> (if the server set an HttpOnly cookie on login)
+
+### Example Request
+
+```
+GET /users/profile
+Authorization: Bearer <jwt-token>
+```
+
+### Example cURL
+
+```
+curl -X GET \
+  http://localhost:4000/users/profile \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+If you're using the cookie token instead of the header, you can send:
+
+```
+curl -X GET \
+  http://localhost:4000/users/profile \
+  -H "Cookie: token=<jwt-token>"
+```
+
+### Responses
+
+- 200 OK
+  - On success, returns the authenticated user's profile.
+
+```
+{
+  "user": {
+    "_id": "<mongo-id>",
+    "fullname": { "firstname": "Alice", "lastname": "Smith" },
+    "email": "alice@example.com"
+    // other user fields...
+  }
+}
+```
+
+- 401 Unauthorized
+  - When no token is provided, token is invalid/expired, or token is blacklisted.
+
+```
+{ "message": "Unauthorized" }
+```
+
+- 500 Internal Server Error
+  - For unexpected errors while fetching the profile.
+
+```
+{ "message": "Server error" }
+```
+
+### Notes
+
+- This route uses an authentication middleware that checks the blacklist and verifies the JWT before loading the user.
+- If using cookies, make sure your client sends cookies with the request.
+
+## GET /users/logout
+
+Log out the current user by invalidating the current token and clearing the auth cookie.
+
+### Description
+
+- Protected route. Requires a valid JWT (in header or cookie).
+- Adds the current token to a blacklist (revocation list) so it can't be used again.
+- Clears the `token` cookie if present.
+
+### Headers
+
+- Authorization: Bearer <jwt-token> (or use the `token` cookie if set).
+
+### Example Request
+
+```
+GET /users/logout
+Authorization: Bearer <jwt-token>
+```
+
+### Example cURL
+
+```
+curl -X GET \
+  http://localhost:4000/users/logout \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+If you're using the cookie token instead of the header, you can send:
+
+```
+curl -X GET \
+  http://localhost:4000/users/logout \
+  -H "Cookie: token=<jwt-token>"
+```
+
+### Responses
+
+- 200 OK
+  - On success, logs the user out and returns a message.
+
+```
+{ "message": "Logout successful" }
+```
+
+- 401 Unauthorized
+  - When no token is provided, token is invalid/expired, or token is already blacklisted.
+
+```
+{ "message": "Unauthorized" }
+```
+
+- 500 Internal Server Error
+  - For unexpected errors during logout.
+
+```
+{ "message": "Server error" }
+```
+
+### Notes
+
+- Blacklisted tokens are stored with a 24-hour TTL; after that, they auto-expire from the database.
+- If you authenticate via Authorization header, make sure to delete the token from your client storage after logout.
