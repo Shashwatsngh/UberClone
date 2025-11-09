@@ -31,20 +31,20 @@ router.post(
   captainController.registerCaptain
 );
 
-// // Login route
-// router.post(
-//   "/login",
-//   [
-//     body("email").isEmail().withMessage("Invalid email address"),
-//     body("password").notEmpty().withMessage("Password is required"),
-//   ],
-//   userController.loginUser
-// );
+// Login route
+router.post(
+  "/login",
+  [
+    body("email").isEmail().withMessage("Invalid email address"),
+    body("password").notEmpty().withMessage("Password is required"),
+  ],
+  captainController.loginCaptain
+);
 
-// // Get user profile
-// router.get("/profile", authMiddleware.authUser, userController.getUserProfile);
+// Get user profile
+router.get("/profile", authMiddleware.authCaptain, captainController.getCaptainProfile);
 
-// // Logout route
-// router.get("/logout", authMiddleware.authUser, userController.logoutUser);
+// Logout route
+router.get("/logout", authMiddleware.authCaptain, captainController.logoutCaptain);
 
 module.exports = router;

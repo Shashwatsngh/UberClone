@@ -362,7 +362,7 @@ curl -X GET \
 
 - Blacklisted tokens are stored with a 24-hour TTL; after that, they auto-expire from the database.
 - If you authenticate via Authorization header, make sure to delete the token from your client storage after logout.
-APPEND_MARKER
+  APPEND_MARKER
 
 ## POST /captains/register
 
@@ -482,7 +482,7 @@ curl -X POST \
 }
 ```
 
-  - Example (duplicate email):
+- Example (duplicate email):
 
 ```
 { "message": "User already exists" }
@@ -503,3 +503,168 @@ curl -X POST \
 - JWT expiry is 24h; re-login issues a new token.
 - Route path is `/captains/register` (mounted at `/captains`).
 
+## POST /captains/login
+
+Authenticate an existing captain and receive a JWT token.
+
+### Description
+
+- Logs a captain in using email and password.
+- Returns a JWT token on success for subsequent captain-protected routes.
+- Requires JSON payload (Content-Type: application/json).
+- Validation: `email` must be valid, `password` must be provided.
+
+### Request Body
+
+```
+{
+  "email": "valid email (required)",
+  "password": "string (required)"
+}
+```
+
+### Example cURL
+
+```
+curl -X POST \
+  http://localhost:4000/captains/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "ravi.driver@example.com",
+    "password": "DriveSecure123"
+  }'
+```
+
+### Responses
+
+- 200 OK
+  - On success returns message, captain document (password omitted), and token.
+
+```
+{
+  "message": "Captain logged in successfully",
+  "captain": {
+    "_id": "<mongo-id>",
+    "fullname": { "firstname": "Ravi", "lastname": "Sharma" },
+    "email": "ravi.driver@example.com",
+    "vehicle": { /* vehicle fields */ }
+  },
+  "token": "<jwt-token>"
+}
+```
+
+- 400 Bad Request
+  - Invalid credentials or validation failure.
+
+```
+{ "message": "Invalid email or password" }
+```
+
+- 500 Internal Server Error
+  - Unexpected server/database error.
+
+```
+{ "error": "Failed to login captain" }
+```
+
+### Notes
+
+- Token is also set as a cookie named `token` if cookies are enabled.
+- Password comparison uses bcrypt; the stored password is hashed.
+
+## GET /captains/profile
+
+Fetch the authenticated captain's profile.
+
+### Description
+
+- Protected route. Requires a valid captain JWT.
+- Token can be sent in Authorization header or cookie `token`.
+- Returns the captain document.
+
+### Headers
+
+- Authorization: `Bearer <jwt-token>` or Cookie: `token=<jwt-token>`
+
+### Example cURL
+
+```
+curl -X GET \
+  http://localhost:4000/captains/profile \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+### Responses
+
+- 200 OK
+
+```
+{
+  "captain": {
+    "_id": "<mongo-id>",
+    "fullname": { "firstname": "Ravi", "lastname": "Sharma" },
+    "email": "ravi.driver@example.com",
+    "vehicle": { /* vehicle fields */ },
+    "status": "inactive"
+  }
+}
+```
+
+- 401 Unauthorized
+
+```
+{ "message": "Unauthorized" }
+```
+
+- 500 Internal Server Error
+
+```
+{ "message": "Server error" }
+```
+
+### Notes
+
+- Middleware `authCaptain` verifies token and loads `req.captain`.
+- Ensure token not blacklisted.
+
+## GET /captains/logout
+
+Invalidate the current captain's token and clear cookie.
+
+### Description
+
+- Protected route. Adds current token to blacklist, clears cookie.
+- Prevents further reuse of that token before natural expiry.
+
+### Example cURL
+
+```
+curl -X GET \
+  http://localhost:4000/captains/logout \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+### Responses
+
+- 200 OK
+
+```
+{ "message": "Logout successful" }
+```
+
+- 401 Unauthorized
+
+```
+{ "message": "Unauthorized" }
+```
+
+- 500 Internal Server Error
+
+```
+{ "message": "Server error" }
+```
+
+### Notes
+
+- Blacklisted tokens auto-expire after 24h (TTL index).
+- Remove token from client storage (header-based) after logout.
