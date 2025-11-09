@@ -362,3 +362,144 @@ curl -X GET \
 
 - Blacklisted tokens are stored with a 24-hour TTL; after that, they auto-expire from the database.
 - If you authenticate via Authorization header, make sure to delete the token from your client storage after logout.
+APPEND_MARKER
+
+## POST /captains/register
+
+Register a new captain (driver) with vehicle details.
+
+### Description
+
+- Creates a captain account with personal and vehicle information.
+- Returns a JWT token on success (used for future authenticated captain routes).
+- Requires JSON payload (Content-Type: application/json).
+- Environment: requires `JWT_SECRET` set to sign captain tokens.
+
+### Request Body
+
+Provide a JSON object with the following shape:
+
+```
+{
+  "fullname": {
+    "firstname": "string (min 3, required)",
+    "lastname": "string (min 3, optional)"
+  },
+  "email": "valid email (required)",
+  "password": "string (min 6, required)",
+  "vehicle": {
+    "colour": "string (min 3, required)",
+    "plate": "string (min 3, required)",
+    "capacity": "integer (min 1, required)",
+    "vehicleType": "one of: car | bike | auto (required)"
+  }
+}
+```
+
+Validation rules (from the route validators):
+
+- `fullname.firstname`: required, min length 3
+- `fullname.lastname`: optional, if provided min length 3
+- `email`: must be a valid email format
+- `password`: min length 6
+- `vehicle.colour`: required, min length 3
+- `vehicle.plate`: required, min length 3
+- `vehicle.capacity`: required, integer >= 1
+- `vehicle.vehicleType`: required, must be one of `car`, `bike`, `auto`
+
+Example:
+
+```
+POST /captains/register
+Content-Type: application/json
+
+{
+  "fullname": { "firstname": "Ravi", "lastname": "Sharma" },
+  "email": "ravi.driver@example.com",
+  "password": "DriveSecure123",
+  "vehicle": {
+    "colour": "Red",
+    "plate": "MH22ZX9",
+    "capacity": 4,
+    "vehicleType": "car"
+  }
+}
+```
+
+### Example cURL
+
+```
+curl -X POST \
+  http://localhost:4000/captains/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullname": { "firstname": "Ravi", "lastname": "Sharma" },
+    "email": "ravi.driver@example.com",
+    "password": "DriveSecure123",
+    "vehicle": {
+      "colour": "Red",
+      "plate": "MH22ZX9",
+      "capacity": 4,
+      "vehicleType": "car"
+    }
+  }'
+```
+
+### Responses
+
+- 201 Created
+  - On success, returns the created captain document and a JWT token.
+  - Example:
+
+```
+{
+  "message": "Captain registered successfully",
+  "captain": {
+    "_id": "<mongo-id>",
+    "fullname": { "firstname": "Ravi", "lastname": "Sharma" },
+    "email": "ravi.driver@example.com",
+    "vehicle": {
+      "colour": "Red",
+      "plate": "MH22ZX9",
+      "capacity": 4,
+      "vehicleType": "car"
+    }
+    // other captain fields...
+  },
+  "token": "<jwt-token>"
+}
+```
+
+- 400 Bad Request
+  - When validation fails or the email is already registered.
+  - Example (validation):
+
+```
+{
+  "errors": [
+    { "msg": "Color must be at least 3 characters long", "param": "vehicle.colour" }
+  ]
+}
+```
+
+  - Example (duplicate email):
+
+```
+{ "message": "User already exists" }
+```
+
+- 500 Internal Server Error
+  - Unexpected server/database error.
+  - Example:
+
+```
+{ "error": "Failed to register captain" }
+```
+
+### Notes
+
+- The captain password is hashed before being stored (bcrypt).
+- The `vehicleType` enum helps restrict allowed vehicle categories.
+- JWT expiry is 24h; re-login issues a new token.
+- Route path is `/captains/register` (mounted at `/captains`).
+

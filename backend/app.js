@@ -13,6 +13,10 @@ app.use(cookieParser());
 // User Routes 
 const userRoutes = require('./routes/user.routes');
 app.use('/users', userRoutes);
+
+// Captain Routes
+const captainRoutes = require('./routes/captain.routes');
+app.use('/captains', captainRoutes);
  
 const connectDB = require('./db/db');
 connectDB();
